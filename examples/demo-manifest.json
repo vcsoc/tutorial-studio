@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "title": "Tutorial Studio: Local Neural Pipeline",
+  "voice": "bf_emma",
+  "speed": 0.94,
+  "pronunciations": {},
+  "scenes": [
+    {
+      "title": "Welcome",
+      "card": "YOUR PROJECT\n\nWhat it does\nWho it is for\nWhat you will learn",
+      "narration": "Welcome. This walkthrough introduces the project and shows how to get started. Replace this narration with verified, project-specific instructions."
+    },
+    {
+      "title": "Your first workflow",
+      "card": "1. Check prerequisites\n2. Follow the documented setup\n3. Perform a real workflow\n4. Verify the result",
+      "narration": "Start with the documented prerequisites. Follow the setup instructions, perform a real workflow, and verify the result. Use screenshots captured from the actual application."
+    }
+  ]
+}

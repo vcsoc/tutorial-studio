@@ -1,0 +1,14 @@
+{
+  "status": "complete",
+  "title": "Tutorial Studio: Local Neural Pipeline",
+  "voice": "bf_emma",
+  "speed": 0.94,
+  "capture_style": "narrated still scenes",
+  "validation": {
+    "duration_seconds": 22.082667,
+    "bytes": 521202,
+    "sha256": "6a91b0c47ff5056f61906954c2c6e52ef25e40e701f56b38343cd3af8ab8e9b4",
+    "chapters": 2,
+    "full_audio_video_decode": true
+  }
+}

@@ -1,0 +1,10 @@
+.venv/
+.models/
+.cache/
+node_modules/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+output/
+.DS_Store

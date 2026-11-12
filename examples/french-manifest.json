@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "title": "Local French narration validation",
+  "voice": "ff_siwis",
+  "speed": 0.94,
+  "scenes": [
+    {
+      "title": "Bienvenue",
+      "card": "Narration locale en fran\u00e7ais\n\nAucun service distant.",
+      "narration": "Bienvenue. Tout reste sur votre ordinateur."
+    }
+  ]
+}

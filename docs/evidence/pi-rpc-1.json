@@ -1,0 +1,155 @@
+[
+  {
+    "id": "commands",
+    "type": "response",
+    "command": "get_commands",
+    "success": true,
+    "data": {
+      "commands": [
+        {
+          "name": "tutorial",
+          "description": "Local neural tutorial studio: doctor | voices | init PATH | validate PATH | preview | render PATH | capture PATH",
+          "source": "extension",
+          "sourceInfo": {
+            "path": "/Users/chris/.pi/agent/extensions/tutorial-studio.ts",
+            "source": "auto",
+            "scope": "user",
+            "origin": "top-level",
+            "baseDir": "/Users/chris/.pi/agent"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "extension_ui_request",
+    "id": "95fcae6c-2a1d-4130-bffc-bebd23c04fef",
+    "method": "setStatus",
+    "statusKey": "tutorial-studio",
+    "statusText": "Tutorial: doctor"
+  },
+  {
+    "type": "extension_ui_request",
+    "id": "e6d87754-ad25-40b2-8d3b-8b9649272b6b",
+    "method": "setStatus",
+    "statusKey": "tutorial-studio"
+  },
+  {
+    "type": "message_start",
+    "message": {
+      "role": "custom",
+      "customType": "tutorial-studio",
+      "content": "{\n  \"framework\": \"/Users/chris/projects/vcsoc/tutorial-studio\",\n  \"python\": \"/Users/chris/projects/vcsoc/tutorial-studio/.venv/bin/python\",\n  \"tools\": {\n    \"ffmpeg\": \"/opt/homebrew/bin/ffmpeg\",\n    \"ffprobe\": \"/opt/homebrew/bin/ffprobe\",\n    \"node\": \"/Users/chris/.volta/tools/image/node/22.22.2/bin/node\"\n  },\n  \"packages\": {\n    \"kokoro-onnx\": \"0.6.1\",\n    \"onnxruntime\": \"1.31.1\",\n    \"soundfile\": \"0.13.1\",\n    \"Pillow\": \"12.1.0\"\n  },\n  \"model_hashes\": {\n    \"model.onnx\": \"7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5\",\n    \"voices.bin\": \"bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d\"\n  },\n  \"model_error\": null,\n  \"render_ready\": true,\n  \"network_during_narration\": false\n}\n",
+      "display": true,
+      "timestamp": 1794492156330
+    }
+  },
+  {
+    "type": "message_end",
+    "message": {
+      "role": "custom",
+      "customType": "tutorial-studio",
+      "content": "{\n  \"framework\": \"/Users/chris/projects/vcsoc/tutorial-studio\",\n  \"python\": \"/Users/chris/projects/vcsoc/tutorial-studio/.venv/bin/python\",\n  \"tools\": {\n    \"ffmpeg\": \"/opt/homebrew/bin/ffmpeg\",\n    \"ffprobe\": \"/opt/homebrew/bin/ffprobe\",\n    \"node\": \"/Users/chris/.volta/tools/image/node/22.22.2/bin/node\"\n  },\n  \"packages\": {\n    \"kokoro-onnx\": \"0.6.1\",\n    \"onnxruntime\": \"1.31.1\",\n    \"soundfile\": \"0.13.1\",\n    \"Pillow\": \"12.1.0\"\n  },\n  \"model_hashes\": {\n    \"model.onnx\": \"7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5\",\n    \"voices.bin\": \"bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d\"\n  },\n  \"model_error\": null,\n  \"render_ready\": true,\n  \"network_during_narration\": false\n}\n",
+      "display": true,
+      "timestamp": 1794492156330
+    }
+  },
+  {
+    "id": "doctor",
+    "type": "response",
+    "command": "prompt",
+    "success": true,
+    "data": {
+      "disposition": "handled"
+    }
+  },
+  {
+    "id": "messages",
+    "type": "response",
+    "command": "get_messages",
+    "success": true,
+    "data": {
+      "messages": [
+        {
+          "role": "custom",
+          "customType": "tutorial-studio",
+          "content": "{\n  \"framework\": \"/Users/chris/projects/vcsoc/tutorial-studio\",\n  \"python\": \"/Users/chris/projects/vcsoc/tutorial-studio/.venv/bin/python\",\n  \"tools\": {\n    \"ffmpeg\": \"/opt/homebrew/bin/ffmpeg\",\n    \"ffprobe\": \"/opt/homebrew/bin/ffprobe\",\n    \"node\": \"/Users/chris/.volta/tools/image/node/22.22.2/bin/node\"\n  },\n  \"packages\": {\n    \"kokoro-onnx\": \"0.6.1\",\n    \"onnxruntime\": \"1.31.1\",\n    \"soundfile\": \"0.13.1\",\n    \"Pillow\": \"12.1.0\"\n  },\n  \"model_hashes\": {\n    \"model.onnx\": \"7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5\",\n    \"voices.bin\": \"bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d\"\n  },\n  \"model_error\": null,\n  \"render_ready\": true,\n  \"network_during_narration\": false\n}\n",
+          "display": true,
+          "timestamp": 1794492156330
+        }
+      ]
+    }
+  },
+  {
+    "type": "extension_ui_request",
+    "id": "d7c0bd80-90b2-4bb0-af84-88740b46ce97",
+    "method": "confirm",
+    "title": "Tutorial Studio: init",
+    "message": "This creates local files and may run local neural inference and FFmpeg. No cloud narration, project execution, implicit model download or existing-output overwrite.\n\nInput: /private/var/folders/vm/rjklnpjx4ps8hh7mlm23hxqm0000gn/T/pytest-of-chris/pytest-212/test_actual_pi_registration_do1/declined.json\nOutput: /private/var/folders/vm/rjklnpjx4ps8hh7mlm23hxqm0000gn/T/pytest-of-chris/pytest-212/test_actual_pi_registration_do1/declined.json\nVoice: manifest/default Emma"
+  },
+  {
+    "type": "extension_ui_request",
+    "id": "c8bc4252-8aff-488c-9894-53b2cf5dcae8",
+    "method": "notify",
+    "message": "Tutorial operation was not approved",
+    "notifyType": "error"
+  },
+  {
+    "id": "deny",
+    "type": "response",
+    "command": "prompt",
+    "success": true,
+    "data": {
+      "disposition": "handled"
+    }
+  },
+  {
+    "type": "extension_ui_request",
+    "id": "40dfa72b-1ecc-4a6f-8226-3f19c952e874",
+    "method": "confirm",
+    "title": "Tutorial Studio: init",
+    "message": "This creates local files and may run local neural inference and FFmpeg. No cloud narration, project execution, implicit model download or existing-output overwrite.\n\nInput: /private/var/folders/vm/rjklnpjx4ps8hh7mlm23hxqm0000gn/T/pytest-of-chris/pytest-212/test_actual_pi_registration_do1/approved.json\nOutput: /private/var/folders/vm/rjklnpjx4ps8hh7mlm23hxqm0000gn/T/pytest-of-chris/pytest-212/test_actual_pi_registration_do1/approved.json\nVoice: manifest/default Emma"
+  },
+  {
+    "type": "extension_ui_request",
+    "id": "12fb69e9-c5fc-4017-8c7d-ddfb7c5e8d85",
+    "method": "setStatus",
+    "statusKey": "tutorial-studio",
+    "statusText": "Tutorial: init"
+  },
+  {
+    "type": "extension_ui_request",
+    "id": "e2569733-1e4b-4a1d-aef0-3b93ec9dd824",
+    "method": "setStatus",
+    "statusKey": "tutorial-studio"
+  },
+  {
+    "type": "message_start",
+    "message": {
+      "role": "custom",
+      "customType": "tutorial-studio",
+      "content": "{\n  \"manifest\": \"/private/var/folders/vm/rjklnpjx4ps8hh7mlm23hxqm0000gn/T/pytest-of-chris/pytest-212/test_actual_pi_registration_do1/approved.json\",\n  \"status\": \"template created; edit before rendering\"\n}\n",
+      "display": true,
+      "timestamp": 1794492156411
+    }
+  },
+  {
+    "type": "message_end",
+    "message": {
+      "role": "custom",
+      "customType": "tutorial-studio",
+      "content": "{\n  \"manifest\": \"/private/var/folders/vm/rjklnpjx4ps8hh7mlm23hxqm0000gn/T/pytest-of-chris/pytest-212/test_actual_pi_registration_do1/approved.json\",\n  \"status\": \"template created; edit before rendering\"\n}\n",
+      "display": true,
+      "timestamp": 1794492156411
+    }
+  },
+  {
+    "id": "allow",
+    "type": "response",
+    "command": "prompt",
+    "success": true,
+    "data": {
+      "disposition": "handled"
+    }
+  }
+]
