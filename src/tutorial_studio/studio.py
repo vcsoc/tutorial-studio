@@ -26,6 +26,7 @@ from .voices import BY_ID, CATALOG
 
 STATIC = Path(__file__).with_name("web")
 MAX_BODY = 12_000_000
+PREVIEW_TEXT = "Welcome to Tutorial Studio. Let's get your tutorial underway with my voice as the narrator."
 
 
 class Conflict(ValueError):
@@ -166,7 +167,7 @@ class Studio:
                 voice = payload.get("voice")
                 if voice not in BY_ID:
                     raise ValueError("Unknown voice")
-                narration = payload.get("text") or BY_ID[voice]["sample"]
+                narration = payload.get("text") or PREVIEW_TEXT
                 if not isinstance(narration, str) or not narration.strip() or len(narration) > 5000:
                     raise ValueError("Preview text must contain 1 to 5000 characters")
                 speed = payload.get("speed", 0.94)

@@ -119,7 +119,7 @@ def call(server, path, data=None, token=True, headers=None):
 
 def test_http_auth_origin_host_and_static_policy(server):
     code, body, headers = call(server, "/", token=False)
-    assert code == 200 and b"Make it make sense" in body
+    assert code == 200 and b"Tutorial editor" in body
     assert "frame-ancestors 'none'" in headers["Content-Security-Policy"]
     assert headers["Referrer-Policy"] == "no-referrer"
     assert call(server, "/api/state", token=False)[0] == 403

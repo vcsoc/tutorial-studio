@@ -1,11 +1,28 @@
 'use strict';
 const $ = id => document.getElementById(id);
+const themeMedia = matchMedia('(prefers-color-scheme: dark)');
+let explicitTheme;
+try { explicitTheme = localStorage.getItem('tutorial-studio-theme'); } catch { /* Storage may be disabled. */ }
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  $('theme-toggle').setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`);
+  $('theme-toggle').title = $('theme-toggle').getAttribute('aria-label');
+  $('theme-toggle').setAttribute('aria-pressed', String(theme === 'dark'));
+}
+applyTheme(['light', 'dark'].includes(explicitTheme) ? explicitTheme : themeMedia.matches ? 'dark' : 'light');
+$('theme-toggle').onclick = () => {
+  explicitTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(explicitTheme);
+  try { localStorage.setItem('tutorial-studio-theme', explicitTheme); } catch { /* Theme still works without persistence. */ }
+};
+themeMedia.addEventListener('change', event => { if (!explicitTheme) applyTheme(event.matches ? 'dark' : 'light'); });
 const fragment = new URLSearchParams(location.hash.slice(1));
 let token = fragment.get('token') || sessionStorage.getItem('tutorial-studio-token') || '';
 if (token) sessionStorage.setItem('tutorial-studio-token', token);
 history.replaceState(null, '', location.pathname);
 let draft, revision, voices = [], selected = 0, dirty = false, busy = false, lastJob = '', lastStatus = '', changeVersion = 0;
 let saving = false;
+let previewVoice = '', preparingVoice = '';
 let toastTimer;
 const node = (tag, text, className) => {
   const el = document.createElement(tag);
@@ -87,12 +104,30 @@ function renderVoices() {
     const card = node('article', undefined, 'voice-card' + (voice.id === draft.voice ? ' selected' : ''));
     card.append(node('span', `${voice.id} / ${engine(voice)}`, 'voice-id'), node('h3', voice.name), node('p', voice.description));
     const controls = node('div', undefined, 'voice-buttons');
-    const preview = button('▶ Preview', () => startPreview(voice.id)); preview.disabled = busy; preview.setAttribute('aria-label', `Preview ${voice.id}`);
+    const preview = button('Preview', () => startPreview(voice.id)); preview.dataset.previewVoice = voice.id;
     const choose = button(voice.id === draft.voice ? 'Selected' : 'Choose voice', () => { draft.voice = voice.id; changed(); renderVoices(); }, 'choose-voice');
     choose.setAttribute('aria-pressed', voice.id === draft.voice ? 'true' : 'false');
     controls.append(preview, choose); card.append(controls); $('voices').append(card);
   }
   if (!filtered.length) $('voices').append(node('p', 'No matching voices. Try resetting the filters.'));
+  updatePreviewButtons();
+}
+function updatePreviewButtons() {
+  const playing = !$('preview-audio').paused && !$('preview-audio').ended;
+  for (const b of document.querySelectorAll('[data-preview-voice]')) {
+    const voice = b.dataset.previewVoice;
+    const stopping = playing && voice === previewVoice;
+    const label = stopping ? 'Stop' : preparingVoice === voice ? 'Preparing...' : 'Preview';
+    b.textContent = label;
+    b.setAttribute('aria-label', `${label} ${voice}`);
+    b.setAttribute('aria-pressed', String(stopping));
+    b.disabled = busy && !stopping;
+  }
+  $('preview-scene').textContent = playing ? 'Stop preview' : 'Listen to this scene';
+}
+function stopPreview() {
+  $('preview-audio').pause(); $('preview-audio').currentTime = 0;
+  updatePreviewButtons();
 }
 async function save() {
   if (current()) {
@@ -109,9 +144,15 @@ async function save() {
   } finally { saving = false; $('save').disabled = false; }
 }
 async function startPreview(voice, text) {
+  if (!text && voice === previewVoice && !$('preview-audio').paused) { stopPreview(); return; }
   if (busy) throw new Error('Wait for the current operation to finish');
-  const job = await api('/api/preview', {voice, text, speed: draft.speed}); updateJob(job);
-  $('job-message').scrollIntoView({behavior:'smooth', block:'nearest'});
+  stopPreview(); preparingVoice = voice; busy = true;
+  $('render').disabled = true; $('preview-scene').disabled = true; updatePreviewButtons();
+  try {
+    const job = await api('/api/preview', {voice, text, speed: draft.speed}); updateJob(job);
+  } catch (error) {
+    busy = false; preparingVoice = ''; renderScenes(); $('preview-scene').disabled = false; updatePreviewButtons(); throw error;
+  }
 }
 function updateJob(job) {
   if (!job) return;
@@ -122,10 +163,13 @@ function updateJob(job) {
   $('job-log').textContent = job.error || job.progress || '';
   if (job.progress) $('job-log').scrollTop = $('job-log').scrollHeight;
   if (job.id === lastJob && job.status === lastStatus) return;
-  lastJob = job.id; lastStatus = job.status; renderVoices();
+  lastJob = job.id; lastStatus = job.status;
+  if (!busy) preparingVoice = '';
+  renderVoices();
   if (busy) { $('job-message').textContent = job.kind === 'render' ? 'Rendering a saved snapshot locally. You may keep editing; this render will not change.' : `Synthesizing ${job.voice} locally. No model downloads.`; return; }
   if (job.status === 'failed') { $('job-message').textContent = 'Operation failed. Your draft is safe. See the details above and retry when ready.'; toast('Operation failed. Check the output panel.'); return; }
   if (job.kind === 'preview') {
+    previewVoice = job.voice;
     $('preview-audio').hidden = false; $('preview-audio').src = media(job.media);
     $('job-message').textContent = `Preview ready / ${job.voice}. Listen before approving a full render.`;
     $('preview-audio').play().catch(() => {});
@@ -147,7 +191,8 @@ async function init() {
     for (const value of [...new Set(values)].sort()) { const option = node('option', value); option.value = value; $(id).append(option); }
   }
   $('save-status').textContent = 'Draft loaded'; renderScenes(); editScene(); renderVoices(); updateJob(state.job);
-  $('preview-audio').addEventListener('play', () => $('result-video').pause());
+  $('preview-audio').addEventListener('play', () => { $('result-video').pause(); updatePreviewButtons(); });
+  for (const event of ['pause', 'ended', 'error']) $('preview-audio').addEventListener(event, updatePreviewButtons);
   $('result-video').addEventListener('play', () => $('preview-audio').pause());
   $('save').onclick = guard(save);
   $('add').onclick = $('add-bottom').onclick = $('start').onclick = guard(addScene);
@@ -166,7 +211,7 @@ async function init() {
     const scene = current(); const reader = new FileReader(); const encoded = await new Promise((resolve,reject) => { reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
     const result = await api('/api/image',{data:encoded}); scene.image = result.image; delete scene.card; changed(); renderScenes(); editScene(); $('image-upload').value = '';
   });
-  $('preview-scene').onclick = guard(() => { if (!current().narration.trim()) throw new Error('Write some narration first'); return startPreview(draft.voice,current().narration); });
+  $('preview-scene').onclick = guard(() => { if (!$('preview-audio').paused) { stopPreview(); return; } if (!current().narration.trim()) throw new Error('Write some narration first'); return startPreview(draft.voice,current().narration); });
   for (const id of ['voice-search','language','locale','gender','engine']) $(id).addEventListener(id === 'voice-search' ? 'input' : 'change',renderVoices);
   $('reset-filters').onclick = () => { for (const id of ['voice-search','language','locale','gender','engine']) $(id).value=''; renderVoices(); };
   $('render').onclick = guard(async () => {

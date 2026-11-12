@@ -30,6 +30,13 @@ test('browser editor saves, previews Heart, renders, and works on mobile', {skip
     await page.goto(ready.studio_url);
     await page.locator('#save-status').filter({hasText:'Draft loaded'}).waitFor();
     assert.equal(await page.locator('#scene-count').textContent(),'0');
+    await page.getByRole('button',{name:'Switch to dark theme'}).click();
+    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+    await page.reload();
+    await page.locator('#save-status').filter({hasText:'Draft loaded'}).waitFor();
+    assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+    await page.getByRole('button',{name:'Switch to light theme'}).click();
+    assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
     await page.locator('#start').click();
     await page.locator('#title').fill('Browser acceptance tutorial');
     await page.locator('#scene-title').fill('A real browser edit');
@@ -53,6 +60,13 @@ test('browser editor saves, previews Heart, renders, and works on mobile', {skip
     await page.getByRole('button',{name:'Preview af_heart',exact:true}).click();
     await page.locator('#preview-audio:not([hidden])').waitFor({timeout:90000});
     assert.ok(await page.locator('#preview-audio').evaluate(el=>el.src.includes('preview.wav')));
+    await page.getByRole('button',{name:'Stop af_heart',exact:true}).click();
+    assert.equal(await page.locator('#preview-audio').evaluate(el=>el.paused),true);
+    await page.getByRole('button',{name:'Preview af_heart',exact:true}).waitFor();
+    const stateResponse = await page.request.get(new URL('/api/state',ready.studio_url).href,{headers:{Authorization:'Bearer '+new URLSearchParams(new URL(ready.studio_url).hash.slice(1)).get('token')}});
+    const state = await stateResponse.json();
+    const previewReceipt = JSON.parse(await fs.readFile(path.join(directory,state.job.id,'operation.log'),'utf8'));
+    assert.equal(previewReceipt.speech.timings.map(t=>t.text).join(' '),"Welcome to Tutorial Studio. Let's get your tutorial underway with my voice as the narrator.");
     await page.locator('#render').click();
     await page.locator('#result-video:not([hidden])').waitFor({timeout:90000});
     await page.locator('#job-message').filter({hasText:'full audio-video decode passed'}).waitFor();
