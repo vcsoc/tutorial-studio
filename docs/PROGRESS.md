@@ -41,9 +41,11 @@ Owner requested more voices and international samples. Added one shared 23-voice
 - Real French and renewed English media smoke renders complete with full decode; subtitle tags verified as `fra` and `eng`. Outputs: `output/smoke-french-001` and `output/smoke-expanded-english`. These are framework tests, not a replacement Kortex tutorial.
 - Human evaluation of naturalness, accent and translation remains pending; no automated aesthetic or native-speaker quality approval claimed.
 
-## Pending Owner Checkpoint
+## Heart Narration Render Complete - Owner Review Pending
 
-Owner must listen and choose a narrator from the expanded gallery before the full Kortex narration render, as promised. **The original full tutorial has not yet been re-narrated.** The renderer, migrated manifest, assets and voice cache are ready; the README contains the exact render command for the chosen voice.
+Owner selected `af_heart`. The complete 13-scene Kortex tutorial has now been re-narrated locally and rendered to `/Users/chris/Movies/Kortex-Tutorial-Neural-Heart/tutorial.mp4`. Duration: 322.02 seconds (5m22s); 1920x1080 H.264/AAC; selectable English captions; 13 regenerated chapters. All 13 scene receipts confirm Heart. Full audio/video decode and chapter checks pass. Output SHA-256: `4cf892d67fa381b2a9d7b01f09d470fa8c8a6039dcbe7621d03ae59a5c54746e`.
+
+Original visuals and original MP4 are preserved. The new directory includes transcript, captions, updated quickstart, graph export, original capture evidence, and current render/validation receipts. This is a voice-only remake using the prior source-evidenced captures, not new application/current-source acceptance. Owner review of the finished narration and video remains pending.
 
 ## Limits
 
