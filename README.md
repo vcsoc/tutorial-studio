@@ -4,6 +4,7 @@ Private, local-first tutorial production framework and Pi extension. Built indep
 
 ## What It Does
 
+- Opens a local browser editor with a scene storyboard, narration editing, voice previews, draft saving and video rendering.
 - Synthesizes narration locally with Kokoro-82M ONNX instead of basic macOS speech.
 - Offers 23 local voices: 8 British English, 7 American English, and 8 native-language French, Spanish, Italian, Brazilian Portuguese and Hindi voices.
 - Converts inert JSON scene manifests into 1080p H.264/AAC MP4s with selectable captions, chapters and a transcript. Subtitle language metadata follows the chosen voice; supply narration in that language.
@@ -61,6 +62,8 @@ These are agent instructions, not an operating-system filesystem sandbox.
 
 ```text
 /tutorial
+/tutorial studio
+/tutorial studio /absolute/path/to/tutorial/manifest.json
 /tutorial doctor
 /tutorial voices
 /tutorial init /absolute/path/to/my-tutorial/manifest.json
@@ -80,6 +83,35 @@ The `tutorial_studio` model tool exposes the same actions. It requires interacti
 Reusable agent request:
 
 > Create a private tutorial for this project using Tutorial Studio. Read the framework README first. Inspect the real documented workflows, create a short storyboard, and write a scene manifest using verified commands and actual application screenshots. Never claim a command succeeded unless it ran. Do not execute project code, start services or capture sensitive data without approval. Make a neural voice preview and wait for my voice approval before rendering the full video. Produce MP4, captions, transcript and a validation receipt. Do not publish anything. Use Tutorial Studio as read-only infrastructure: do not modify its framework, extension, loader, dependencies, documentation or progress logs. Keep all tutorial artifacts and project notes in this project's workspace or an approved external output directory. Report framework issues for maintenance in the Tutorial Studio project; do not fix them from this consumer session.
+
+## Browser Editor
+
+Run `/tutorial studio` in Pi, choose an external workspace, and approve the launch. The editor starts empty if that workspace has no draft, or resumes its saved `draft.json`. To start from an existing tutorial, use `/tutorial studio /absolute/path/to/manifest.json` and a new workspace. Images are copied into the workspace; the original manifest and assets are never edited. An existing workspace draft takes precedence over an import argument.
+
+The editor provides:
+
+- A storyboard of scenes with selection, add, duplicate, delete and move controls. A scene is one narrated still visual, not an individual encoded video frame.
+- Editable tutorial/scene titles, on-screen card text, narration prefilled from imported scenes, optional notes and pronunciation rules.
+- PNG/JPEG/WebP screenshot uploads, up to 8 MB and 25 megapixels, normalized to local PNG assets. Imported images use the same limits.
+- Every voice in the currently supported shared catalog, with search and language, locale, gender and engine filters. Voice previews are generated locally on demand; a scene preview uses its current narration and the saved pronunciation rules.
+- Explicit draft saving, reload persistence, unsaved-change warnings and revision checks against conflicting saves in another tab. Only one editor server can own a workspace at a time.
+- Confirmed rendering of a strictly validated saved snapshot into a fresh operation directory, with progress, errors, finished video playback and links to the video, captions, transcript, manifest and receipt. Editing during rendering does not change that render.
+
+Listen to a preview before confirming a full render. Native-language previews do not translate the script. Drafts can be empty or incomplete, but renders require 1-100 valid scenes. Render failures preserve the draft and operation log. The visual preview is illustrative; final card layout and media checks run during rendering. Narration fields are plain text to speak, not AI prompts or executable instructions.
+
+The editor binds to `127.0.0.1` on an OS-selected port, requires a random per-launch access token, rejects foreign Host/Origin headers and uses no remote web assets. Treat its launch URL as private. No app execution, model downloads, cloud speech or publishing happens from the editor. Its workspace must be outside this framework installation. Local processes with access to your account are outside this protection boundary.
+
+Keep the Pi session open while using the editor. Reloading/exiting Pi stops its server and any active synthesis/render operation; save drafts first. Reopening resumes the draft, but the output panel only tracks operations from the current server session. Earlier output files remain in the workspace. Opening a different workspace in the same Pi session replaces the existing server and stops its active operation.
+
+Standalone CLI (macOS/Linux; tested on Apple Silicon macOS):
+
+```sh
+.venv/bin/tutorial-studio studio \
+  --workspace "$HOME/Movies/Tutorial-Studio-Workspace" \
+  --manifest /absolute/path/to/tutorial/manifest.json
+```
+
+Omit `--manifest` for an empty workspace; add `--no-browser` to print the launch URL without opening a browser. Stop the standalone server with Ctrl+C. The editor serves existing local models only; the previously discussed 54-voice expansion and Piper support are separate work, not included in this editor release.
 
 ## Voice Preview First
 

@@ -93,6 +93,11 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="action", required=True)
     sub.add_parser("doctor")
     sub.add_parser("voices")
+    studio = sub.add_parser("studio", help="Open the local browser editor")
+    studio.add_argument("--workspace", required=True, type=Path)
+    studio.add_argument("--manifest", type=Path, help="Import into a new workspace; original is never edited")
+    studio.add_argument("--port", type=int, default=0)
+    studio.add_argument("--no-browser", action="store_true")
     gallery = sub.add_parser("gallery")
     gallery.add_argument("--output", required=True, type=Path)
     setup = sub.add_parser("setup-model")
@@ -122,6 +127,10 @@ def main(argv=None):
     media.add_argument("video", type=Path)
     args = parser.parse_args(argv)
     try:
+        if args.action == "studio":
+            from .studio import serve
+            serve(args.workspace, manifest=args.manifest, models=args.models, port=args.port, open_browser=not args.no_browser)
+            return 0
         if args.action == "doctor":
             result = doctor(args.models)
         elif args.action == "voices":

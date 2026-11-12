@@ -38,6 +38,8 @@ def test_actual_pi_registration_doctor_and_approval_gate(tmp_path, entrypoint):
             record = records.get(timeout=40)
             evidence.append(record)
             assert record.get("type") != "agent_start", "Extension command must not trigger a model request"
+            if record.get("type") == "extension_ui_request" and record.get("method") == "input":
+                send({"type": "extension_ui_response", "id": record["id"], "value": str(tmp_path / "editor-workspace")})
             if record.get("type") == "extension_ui_request" and record.get("method") == "confirm":
                 send({"type": "extension_ui_response", "id": record["id"], "confirmed": approve})
             if record.get("type") == "response" and record.get("id") == identifier:
@@ -60,7 +62,9 @@ def test_actual_pi_registration_doctor_and_approval_gate(tmp_path, entrypoint):
         approved = tmp_path / "approved.json"
         request("allow", {"type": "prompt", "message": "/tutorial init " + str(approved)}, approve=True)
         assert json.loads(approved.read_text())["schema_version"] == 1
-        assert sum(r.get("method") == "confirm" for r in evidence) == 2
+        request("deny-studio", {"type": "prompt", "message": "/tutorial studio"})
+        assert not (tmp_path / "editor-workspace").exists()
+        assert sum(r.get("method") == "confirm" for r in evidence) == 3
         (tmp_path / "pi-acceptance.json").write_text(json.dumps(evidence, indent=2))
     finally:
         process.stdin.close()

@@ -3,6 +3,8 @@ import { truncateHead, withFileMutationQueue } from '@earendil-works/pi-coding-a
 import { Type } from 'typebox';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { studioLauncher } from './studio-process.mjs';
 import { actions, invocation, mutating, voiceIds, voiceCatalog } from './requests.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -10,18 +12,34 @@ const python = join(root, '.venv', 'bin', 'python');
 const voiceSchema = Type.Union(voiceIds.map((id: string) => Type.Literal(id)));
 
 export default function tutorialStudio(pi: ExtensionAPI) {
+  const studio = studioLauncher(python, root);
+  pi.on('session_shutdown', async () => { await studio.stop(); });
   async function run(action: string, options: { manifest?: string; output?: string; voice?: string }, ctx: ExtensionContext, signal?: AbortSignal) {
     if (signal?.aborted) throw new Error('Tutorial operation cancelled');
     const args = invocation(action, options, ctx.cwd);
     if (mutating.has(action)) {
       if (!ctx.hasUI) throw new Error('Mutation requires interactive approval. Use the CLI directly in noninteractive automation.');
-      const note = action === 'capture'
+      const note = action === 'studio'
+        ? 'This starts a loopback-only browser editor and opens your browser. Drafts, copied images, previews and renders stay in the chosen workspace outside the framework. An optional manifest is imported only into a new workspace. The server stops when this Pi session closes or reloads. Opening a different workspace replaces this session\'s current editor and stops any active render.'
+        : action === 'capture'
         ? 'This opens an isolated browser against an already-running loopback app. Reviewed clicks/fills can change app state. No app is started. Secret inputs are masked, but screenshots can still contain private content.'
         : action === 'gallery'
           ? 'This generates local voice samples and updates voice-preview.html in the chosen directory. Existing audio is retained and existing gallery HTML is backed up. No downloads or full tutorial render.'
           : 'This creates local files and may run local neural inference and FFmpeg. No cloud narration, project execution, implicit model download or existing-output overwrite.';
       const ok = await ctx.ui.confirm(`Tutorial Studio: ${action}`, `${note}\n\nInput: ${options.manifest ?? '(built-in voice preview)'}\nOutput: ${options.output ?? options.manifest}\nVoice: ${options.voice ?? 'manifest/default Emma'}`);
       if (!ok) throw new Error('Tutorial operation was not approved');
+    }
+    if (action === 'studio') {
+      const ready = await studio.start(args);
+      const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer.exe' : 'xdg-open';
+      let browserOpened = false;
+      try {
+        const opened = await pi.exec(opener, [ready.studio_url], { timeout: 10000 });
+        browserOpened = opened.code === 0;
+      } catch {
+        // The private launch URL remains usable when no browser opener is installed.
+      }
+      return JSON.stringify({ ...ready, browser_opened: browserOpened, note: 'Keep this Pi session open. Save drafts before reloading; reload/exit stops the editor and any running render.' }, null, 2);
     }
     if (ctx.hasUI) ctx.ui.setStatus('tutorial-studio', `Tutorial: ${action}`);
     const execute = async () => {
@@ -46,7 +64,7 @@ export default function tutorialStudio(pi: ExtensionAPI) {
   pi.registerTool({
     name: 'tutorial_studio',
     label: 'Tutorial Studio',
-    description: 'Local tutorial framework: doctor, voices, validate, init, neural voice preview, video render or approved loopback browser capture. Mutations require an interactive confirmation. No cloud TTS or implicit downloads. Use-only in consumer projects: do not edit the Tutorial Studio framework or extension. Output capped at 12 KB / 200 lines.',
+    description: 'Local tutorial framework: browser editor studio, doctor, voices, validate, init, neural voice preview, video render or approved loopback browser capture. Mutations require an interactive confirmation. No cloud TTS or implicit downloads. Use-only in consumer projects: do not edit the Tutorial Studio framework or extension. Output capped at 12 KB / 200 lines.',
     promptSnippet: 'Create and validate reusable local narrated tutorial videos',
     promptGuidelines: [
       'Use tutorial_studio when the user requests a tutorial video or voice preview. Read the framework README before authoring a manifest.',
@@ -62,7 +80,7 @@ export default function tutorialStudio(pi: ExtensionAPI) {
     parameters: Type.Object({
       action: Type.Union(actions.map((action: string) => Type.Literal(action))),
       manifest: Type.Optional(Type.String({ description: 'Manifest path; for capture, the reviewed capture plan' })),
-      output: Type.Optional(Type.String({ description: 'Fresh output directory, or a new .wav path for preview' })),
+      output: Type.Optional(Type.String({ description: 'External workspace for studio, fresh render output directory, or a new .wav path for preview' })),
       voice: Type.Optional(voiceSchema),
     }),
     async execute(_id, params, signal, onUpdate, ctx) {
@@ -73,7 +91,7 @@ export default function tutorialStudio(pi: ExtensionAPI) {
   });
 
   pi.registerCommand('tutorial', {
-    description: 'Local neural tutorial studio: doctor | voices | init PATH | validate PATH | preview | gallery | render PATH | capture PATH',
+    description: 'Local tutorial editor: studio [MANIFEST] | doctor | voices | init PATH | validate PATH | preview | gallery | render PATH | capture PATH',
     getArgumentCompletions(prefix) {
       const values = actions.filter((action: string) => action.startsWith(prefix));
       return values.length ? values.map((value: string) => ({ value, label: value })) : null;
@@ -87,8 +105,18 @@ export default function tutorialStudio(pi: ExtensionAPI) {
           action = (await ctx.ui.select('Tutorial Studio', actions)) ?? '';
           if (!action) return;
         }
-        if (!actions.includes(action)) throw new Error('Use doctor, voices, init, validate, preview, gallery, render or capture');
+        if (!actions.includes(action)) throw new Error('Use studio, doctor, voices, init, validate, preview, gallery, render or capture');
         const options: { manifest?: string; output?: string; voice?: string } = {};
+        if (action === 'studio') {
+          if (!ctx.hasUI) throw new Error('Studio requires interactive mode');
+          const input = trimmed.slice(action.length).trim().replace(/^"(.*)"$/, '$1');
+          if (input) options.manifest = resolve(ctx.cwd, input);
+          const identity = createHash('sha256').update(options.manifest ?? ctx.cwd).digest('hex').slice(0, 12);
+          const suggested = join(process.env.HOME ?? ctx.cwd, 'Movies', 'Tutorial-Studio-Workspaces', identity);
+          const answer = await ctx.ui.input('Editor workspace outside the framework (empty = suggested)', suggested);
+          if (answer === undefined) return;
+          options.output = answer.trim() || suggested;
+        }
         if (['init', 'validate', 'render', 'capture'].includes(action)) {
           let value = trimmed.slice(action.length).trim().replace(/^"(.*)"$/, '$1');
           if (!value && ctx.hasUI) value = (await ctx.ui.input('Manifest / capture-plan path')) ?? '';

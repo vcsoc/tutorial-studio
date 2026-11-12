@@ -16,7 +16,7 @@ tutorial-studio = "tutorial_studio.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-tutorial_studio = ["voices.json"]
+tutorial_studio = ["voices.json", "web/*.html", "web/*.css", "web/*.js"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

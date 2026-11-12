@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 
 export const voiceCatalog = JSON.parse(readFileSync(new URL('../src/tutorial_studio/voices.json', import.meta.url), 'utf8'));
 
-export const actions = ['doctor', 'voices', 'validate', 'init', 'preview', 'gallery', 'render', 'capture'];
-export const mutating = new Set(['init', 'preview', 'gallery', 'render', 'capture']);
+export const actions = ['studio', 'doctor', 'voices', 'validate', 'init', 'preview', 'gallery', 'render', 'capture'];
+export const mutating = new Set(['studio', 'init', 'preview', 'gallery', 'render', 'capture']);
 export const voiceIds = voiceCatalog.map(voice => voice.id);
 const voices = new Set(voiceIds);
 
@@ -20,6 +20,10 @@ export function invocation(action, options, cwd) {
   if (['preview', 'render'].includes(action) && options.voice) {
     if (!voices.has(options.voice)) throw new Error('Unknown voice');
     args.push('--voice', options.voice);
+  }
+  if (action === 'studio') {
+    args.push('--workspace', absolute(options.output), '--no-browser');
+    if (options.manifest) args.push('--manifest', absolute(options.manifest));
   }
   if (action === 'capture') args.push('--approve-browser');
   return args;
