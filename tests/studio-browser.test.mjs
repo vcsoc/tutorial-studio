@@ -90,3 +90,101 @@ test('browser editor saves, previews Heart, renders, and works on mobile', {skip
     await fs.rm(directory,{recursive:true,force:true});
   }
 });
+
+test('inline canvas edits and reviewed screen captures survive a real render', {skip:!executable,timeout:180000}, async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(),'tutorial-inline-'));
+  const launcher = studioLauncher(path.join(root,'.venv/bin/python'),root);
+  let browser;
+  try {
+    const ready = await launcher.start(invocation('studio',{output:directory},root));
+    browser = await chromium.launch({executablePath:executable,headless:true});
+    const page = await browser.newPage({viewport:{width:1440,height:1000}});
+    const errors=[]; page.on('pageerror',error=>errors.push(error.message));
+    page.on('dialog',dialog=>dialog.accept());
+    let uploads=0; page.on('request',request=>{if(request.url().includes('/api/image') && request.method()==='POST')uploads++;});
+    await page.goto(ready.studio_url);
+    await page.locator('#save-status').filter({hasText:'Draft loaded'}).waitFor();
+    await page.locator('#start').click();
+    await page.getByRole('textbox',{name:'Scene breadcrumb',exact:true}).fill('START HERE');
+    await page.getByRole('textbox',{name:'Scene title in preview',exact:true}).fill('Inline title');
+    assert.equal(await page.locator('#scene-title').inputValue(),'Inline title');
+    await page.getByRole('textbox',{name:'Scene content in preview',exact:true}).fill('First step.\nSecond step.');
+    assert.equal(await page.locator('#card').inputValue(),'First step.\nSecond step.');
+    await page.locator('#visual-card').press('End');
+    await page.locator('#visual-card').pressSequentially(' Keep typing.');
+    assert.equal(await page.locator('#card').inputValue(),'First step.\nSecond step. Keep typing.');
+    await page.locator('#visual-card').evaluate(el=>{
+      const data=new DataTransfer(); data.setData('text/html','<img src=x onerror="window.injected=true">'); data.setData('text/plain',' Plain paste.');
+      el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
+    });
+    assert.equal(await page.locator('#visual-card img').count(),0);
+    assert.equal(await page.evaluate(()=>window.injected),undefined);
+    await page.locator('#narration').fill('Welcome to the inline editor. Here is your screenshot.');
+    await page.locator('#save').click();
+    await page.locator('#save-status').filter({hasText:'Draft saved'}).waitFor();
+    await page.reload();
+    await page.locator('#save-status').filter({hasText:'Draft loaded'}).waitFor();
+    assert.equal(await page.locator('#visual-number').innerText(),'START HERE');
+    assert.equal(await page.locator('#visual-title').innerText(),'Inline title');
+    assert.match(await page.locator('#visual-card').innerText(),/Plain paste/);
+    // Synthetic browser MediaStream tests the capture lifecycle, not the OS chooser.
+    await page.evaluate(()=>{
+      window.captureStreams=[];
+      Object.defineProperty(navigator.mediaDevices,'getDisplayMedia',{configurable:true,value:async options=>{
+        window.captureOptions=options;
+        const canvas=document.createElement('canvas'); canvas.width=640; canvas.height=360;
+        const context=canvas.getContext('2d'); context.fillStyle='#2a536a'; context.fillRect(0,0,640,360);
+        const stream=canvas.captureStream(12); window.captureStreams.push(stream);
+        const timer=setInterval(()=>context.fillRect(0,0,640,360),70);
+        const track=stream.getVideoTracks()[0], stop=track.stop.bind(track);
+        track.stop=()=>{clearInterval(timer);stop();};
+        return stream;
+      }});
+    });
+    await page.locator('#capture-screen').click();
+    await page.locator('#capture-review[open]').waitFor();
+    assert.equal(await page.evaluate(()=>window.captureStreams.every(s=>s.getTracks().every(t=>t.readyState==='ended'))),true);
+    assert.equal(await page.evaluate(()=>window.captureOptions.audio),false);
+    assert.equal(uploads,0);
+    await page.locator('#capture-discard').click();
+    assert.equal(await page.locator('#visual-content-image').isHidden(),true);
+    assert.equal(uploads,0);
+    await page.locator('#capture-screen').click();
+    await page.locator('#capture-review[open]').waitFor();
+    await page.locator('#capture-insert').click();
+    await page.locator('#visual-content-image:not([hidden])').waitFor();
+    assert.equal(uploads,1);
+    const bounds=await page.locator('#visual-content-image').boundingBox();
+    const canvasBounds=await page.locator('#visual').boundingBox();
+    assert.ok(bounds.height>40 && bounds.y+bounds.height<=canvasBounds.y+canvasBounds.height+1);
+    assert.match(await page.locator('#card').inputValue(),/First step/);
+    await page.evaluate(()=>Object.defineProperty(navigator.mediaDevices,'getDisplayMedia',{configurable:true,value:async()=>{throw new DOMException('Denied','NotAllowedError');}}));
+    await page.locator('#capture-screen').click();
+    await page.locator('#toast').filter({hasText:'Screen capture cancelled'}).waitFor();
+    assert.equal(uploads,1);
+    await page.locator('#save').click();
+    await page.locator('#save-status').filter({hasText:'Draft saved'}).waitFor();
+    const draft=JSON.parse(await fs.readFile(path.join(directory,'draft.json'),'utf8'));
+    assert.equal(draft.scenes[0].breadcrumb,'START HERE');
+    assert.equal(draft.scenes[0].title,'Inline title');
+    assert.ok(draft.scenes[0].content_image.startsWith('assets/'));
+    await page.reload();
+    await page.locator('#save-status').filter({hasText:'Draft loaded'}).waitFor();
+    await page.locator('#visual-content-image:not([hidden])').waitFor();
+    await page.locator('#render').click();
+    await page.locator('#result-video:not([hidden])').waitFor({timeout:90000});
+    const link=await page.locator('#downloads a').filter({hasText:'Manifest'}).getAttribute('href');
+    const snapshot=await (await page.request.get(new URL(link,ready.studio_url).href)).json();
+    assert.equal(snapshot.scenes[0].breadcrumb,'START HERE');
+    assert.equal(snapshot.scenes[0].title,'Inline title');
+    assert.equal(snapshot.scenes[0].content_image,undefined);
+    assert.equal(snapshot.scenes[0].image,'visuals/001.png');
+    await page.setViewportSize({width:390,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    assert.deepEqual(errors,[]);
+  } finally {
+    if(browser) await browser.close();
+    await launcher.stop();
+    await fs.rm(directory,{recursive:true,force:true});
+  }
+});

@@ -24,6 +24,7 @@ let draft, revision, voices = [], selected = 0, dirty = false, busy = false, las
 let saving = false;
 let previewVoice = '', preparingVoice = '';
 let toastTimer;
+let pendingCapture, captureUrl, captureInserting = false;
 const node = (tag, text, className) => {
   const el = document.createElement(tag);
   if (text !== undefined) el.textContent = text;
@@ -59,15 +60,31 @@ function renderScenes() {
   });
   $('render').disabled = !draft.scenes.length || busy;
 }
+function previewText(id, value) {
+  // Do not replace an active editable node: doing so loses its caret and undo history.
+  if (document.activeElement !== $(id) && $(id).textContent !== value) $(id).textContent = value;
+}
 function visual() {
   const scene = current(); if (!scene) return;
-  $('visual-number').textContent = String(selected + 1).padStart(2, '0');
-  $('visual-title').textContent = scene.title;
-  $('visual-card').textContent = scene.card || '';
+  previewText('visual-number', scene.breadcrumb || `SCENE ${String(selected + 1).padStart(2, '0')}`);
+  previewText('visual-title', scene.title);
+  previewText('visual-card', scene.card || '');
   $('visual-note').textContent = scene.note || '';
+  $('visual-note').hidden = !!scene.image;
   $('visual-image').hidden = !scene.image;
+  for (const id of ['visual-number', 'visual-title', 'visual-card']) {
+    $(id).setAttribute('contenteditable', scene.image ? 'false' : 'plaintext-only');
+    $(id).tabIndex = scene.image ? -1 : 0;
+    $(id).setAttribute('aria-disabled', String(!!scene.image));
+  }
   if (scene.image) $('visual-image').src = media('/' + scene.image);
   else $('visual-image').removeAttribute('src');
+  $('visual').classList.toggle('has-content-image', !!scene.content_image);
+  $('visual-content-image').hidden = !scene.content_image;
+  if (scene.content_image) $('visual-content-image').src = media('/' + scene.content_image);
+  else $('visual-content-image').removeAttribute('src');
+  $('remove-content-image').hidden = !scene.content_image;
+  $('canvas-help').textContent = scene.image ? 'Full-scene image. Choose Text card to edit labels and content, or insert a new inline image.' : 'Click the breadcrumb, title or content to edit directly. Images are inserted below the text.';
   $('card-label').hidden = !!scene.image;
   const words = scene.narration.trim().split(/\s+/).filter(Boolean).length;
   $('word-count').textContent = `${words} words / ~${Math.ceil(words / (145 * draft.speed) * 60)} sec (estimate)`;
@@ -182,6 +199,88 @@ function updateJob(job) {
     }
   }
 }
+function bindInline(id, key, limit, multiline) {
+  const el = $(id);
+  el.addEventListener('input', () => {
+    let value = el.innerText.replace(/\r/g, '').replace(/\u00a0/g, ' ');
+    if (!multiline) value = value.replace(/\n/g, ' ');
+    if (value.length > limit) {
+      value = value.slice(0, limit); el.textContent = value;
+      const range = document.createRange(); range.selectNodeContents(el); range.collapse(false);
+      const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+      toast(`This field is limited to ${limit} characters`);
+    }
+    if (key === 'breadcrumb' && !value.trim()) delete current().breadcrumb;
+    else current()[key] = value;
+    if (key === 'title') { $('scene-title').value = value; renderScenes(); }
+    if (key === 'card') $('card').value = value;
+    changed();
+  });
+  el.addEventListener('keydown', event => { if (!multiline && event.key === 'Enter') { event.preventDefault(); el.blur(); } });
+  el.addEventListener('blur', visual);
+  el.addEventListener('drop', event => event.preventDefault());
+  el.addEventListener('paste', event => {
+    // Keep pasted markup inert even in browsers without plaintext-only editing support.
+    event.preventDefault();
+    const selection = getSelection(); if (!selection.rangeCount) return;
+    const range = selection.getRangeAt(0); if (!el.contains(range.commonAncestorContainer)) return;
+    let text = event.clipboardData?.getData('text/plain') || ''; if (!multiline) text = text.replace(/[\r\n]+/g, ' ');
+    range.deleteContents(); const inserted = document.createTextNode(text); range.insertNode(inserted);
+    range.setStartAfter(inserted); range.collapse(true); selection.removeAllRanges(); selection.addRange(range);
+    el.dispatchEvent(new Event('input', {bubbles: true}));
+  });
+}
+async function attachImage(file, scene, background = false) {
+  if (!file || file.size > 8_000_000) throw new Error('Use an image smaller than 8 MB');
+  if (!draft.scenes.includes(scene)) throw new Error('The target scene was deleted; select a scene and try again');
+  const reader = new FileReader();
+  const encoded = await new Promise((resolve, reject) => { reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = () => reject(new Error('Could not read image')); reader.readAsDataURL(file); });
+  const result = await api('/api/image', {data: encoded});
+  if (!draft.scenes.includes(scene)) throw new Error('The target scene was deleted while uploading');
+  if (background) { scene.image = result.image; delete scene.card; delete scene.content_image; }
+  else { delete scene.image; scene.card = scene.card || ''; scene.content_image = result.image; }
+  changed(); renderScenes(); editScene();
+}
+function discardCapture() {
+  pendingCapture = undefined;
+  if (captureUrl) URL.revokeObjectURL(captureUrl);
+  captureUrl = undefined; $('capture-preview').removeAttribute('src');
+  if ($('capture-review').open) $('capture-review').close();
+}
+async function captureScreen() {
+  if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('Screen capture is not available in this browser. Use Insert image to upload a screenshot.');
+  const scene = current(); if (!scene) throw new Error('Add or select a scene first');
+  let stream;
+  const video = document.createElement('video'); video.muted = true; video.playsInline = true;
+  $('capture-screen').disabled = true;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({video: true, audio: false});
+    video.srcObject = stream; await video.play();
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('No screen frame was received. Try again.')), 5000);
+      const done = () => { clearTimeout(timeout); resolve(); };
+      if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(done); else setTimeout(done, 150);
+    });
+    if (!video.videoWidth || !video.videoHeight) throw new Error('The selected capture source has no visible frame');
+    const scale = Math.min(1, 1920 / video.videoWidth, 1080 / video.videoHeight);
+    const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(video.videoWidth * scale)); canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    for (const track of stream.getTracks()) track.stop();
+    stream = undefined;
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('Could not create the screenshot');
+    discardCapture(); pendingCapture = {blob, scene};
+    captureUrl = URL.createObjectURL(blob); $('capture-preview').src = captureUrl;
+  } catch (error) {
+    if (['NotAllowedError', 'AbortError'].includes(error.name)) throw new Error('Screen capture cancelled or not permitted. No scene changes were made.');
+    throw error;
+  } finally {
+    if (stream) for (const track of stream.getTracks()) track.stop();
+    video.pause(); video.srcObject = null; $('capture-screen').disabled = false;
+  }
+  // Review only after all screen-sharing tracks are stopped; no server write yet.
+  $('capture-review').showModal();
+}
 async function init() {
   const state = await api('/api/state'); draft = state.draft; revision = state.revision; voices = state.voices;
   $('workspace').textContent = state.workspace; $('title').value = draft.title;
@@ -205,11 +304,30 @@ async function init() {
   $('up').onclick = () => move(-1); $('down').onclick = () => move(1);
   $('duplicate').onclick = guard(() => { if (draft.scenes.length >= 100) throw new Error('Scene limit reached'); draft.scenes.splice(selected + 1,0,structuredClone(current())); selected++; changed(); renderScenes(); editScene(); });
   $('delete').onclick = () => { if (!confirm('Delete this scene from the draft?')) return; draft.scenes.splice(selected,1); selected = Math.max(0, Math.min(selected,draft.scenes.length-1)); changed(); renderScenes(); editScene(); };
+  bindInline('visual-number', 'breadcrumb', 120, false);
+  bindInline('visual-title', 'title', 180, false);
+  bindInline('visual-card', 'card', 2000, true);
   $('use-card').onclick = () => { const scene = current(); delete scene.image; scene.card = scene.card || ''; changed(); renderScenes(); editScene(); };
-  $('image-upload').onchange = guard(async () => {
-    const file = $('image-upload').files[0]; if (!file) return; if (file.size > 8_000_000) throw new Error('Use an image smaller than 8 MB');
-    const scene = current(); const reader = new FileReader(); const encoded = await new Promise((resolve,reject) => { reader.onload = () => resolve(reader.result.split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
-    const result = await api('/api/image',{data:encoded}); scene.image = result.image; delete scene.card; changed(); renderScenes(); editScene(); $('image-upload').value = '';
+  $('remove-content-image').onclick = () => { delete current().content_image; changed(); visual(); };
+  for (const [id, background] of [['image-upload', true], ['content-image-upload', false]]) {
+    $(id).onchange = guard(async () => {
+      const file = $(id).files[0]; if (!file) return;
+      try { await attachImage(file, current(), background); } finally { $(id).value = ''; }
+    });
+  }
+  for (const label of document.querySelectorAll('.upload-button')) label.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); label.querySelector('input').click(); }
+  });
+  $('capture-screen').onclick = guard(captureScreen);
+  $('capture-discard').onclick = $('capture-close').onclick = discardCapture;
+  $('capture-review').addEventListener('close', discardCapture);
+  $('capture-review').addEventListener('cancel', event => { if (captureInserting) event.preventDefault(); });
+  $('capture-insert').onclick = guard(async () => {
+    if (!pendingCapture || captureInserting) return;
+    captureInserting = true;
+    for (const id of ['capture-insert', 'capture-discard', 'capture-close']) $(id).disabled = true;
+    try { await attachImage(pendingCapture.blob, pendingCapture.scene); discardCapture(); toast('Screenshot inserted. Save the draft to keep this scene change.'); }
+    finally { captureInserting = false; for (const id of ['capture-insert', 'capture-discard', 'capture-close']) $(id).disabled = false; }
   });
   $('preview-scene').onclick = guard(() => { if (!$('preview-audio').paused) { stopPreview(); return; } if (!current().narration.trim()) throw new Error('Write some narration first'); return startPreview(draft.voice,current().narration); });
   for (const id of ['voice-search','language','locale','gender','engine']) $(id).addEventListener(id === 'voice-search' ? 'input' : 'change',renderVoices);

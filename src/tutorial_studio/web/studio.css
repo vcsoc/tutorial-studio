@@ -46,11 +46,11 @@ button, .upload-button {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   cursor: pointer; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface); color: var(--text); padding: 8px 12px;
-  font-size: 12px; font-weight: 500; line-height: 1.4; transition: background .15s;
+  font-size: 12px; font-weight: 500; line-height: 1.4;
 }
 button:hover, .upload-button:hover { background: var(--hover); }
 button:disabled { opacity: .45; cursor: not-allowed; }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible, .upload-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 button svg, .upload-button svg { width: 16px; height: 16px; flex: 0 0 auto; }
 .primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
 .primary:hover { background: var(--primary-hover); }
@@ -73,6 +73,8 @@ a { color: var(--link); }
 .top-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 #save-status { font-size: 11px; color: var(--muted); margin-right: 8px; }
 #theme-toggle { padding: 8px; width: 34px; height: 34px; }
+.theme-sun, [data-theme="dark"] .theme-moon { display: none; }
+[data-theme="dark"] .theme-sun { display: block; }
 .studio { display: grid; grid-template-columns: 224px minmax(360px, 1fr) 300px; min-height: calc(100vh - var(--topbar) - 46px); }
 .storyboard, .voice-panel { position: sticky; top: var(--topbar); align-self: start; max-height: calc(100vh - var(--topbar)); overflow-y: auto; scrollbar-width: thin; padding: 24px 16px; background: var(--sidebar); }
 .storyboard { border-right: 1px solid var(--border); }
@@ -91,7 +93,7 @@ a { color: var(--link); }
 }
 .scene-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .scene-name { display: flex; gap: 8px; align-items: baseline; font-size: 11px; margin-top: 8px; overflow-wrap: anywhere; }
-.scene-name small { color: var(--muted); font-size: 10px; }
+.scene-name small { flex-shrink: 0; white-space: nowrap; color: var(--muted); font-size: 10px; }
 .add-scene { width: 100%; border-style: dashed; color: var(--muted); }
 .workspace-label { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 18px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .workspace-label p { margin: 8px 0; }
@@ -115,6 +117,28 @@ textarea { resize: vertical; min-height: 70px; }
 .visual pre { margin: 0; font: clamp(9px, .95vw, 16px)/1.65 Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: #d0decf; }
 #visual-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #152d28; }
 #visual-note { position: absolute; bottom: 3%; left: 7%; font: 10px Georgia, serif; color: #d1b176; }
+.canvas-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.canvas-toolbar button, .canvas-toolbar .upload-button { font-size: 11px; padding: 7px 9px; }
+.toolbar-label { margin-right: auto; padding: 0 6px; color: var(--muted); font-size: 11px; }
+.canvas-help { margin: 10px 0; color: var(--muted); font-size: 10px; }
+.visual [contenteditable] { cursor: text; border-radius: 3px; outline: 1px dashed transparent; outline-offset: 5px; min-width: 25px; }
+.visual [contenteditable]:hover { outline-color: #a7c7b580; }
+.visual [contenteditable]:focus { outline: 2px solid #a7c7b5; background: #ffffff08; }
+.visual [contenteditable]:empty::before { content: attr(data-placeholder); color: #c6d4c5; opacity: .65; pointer-events: none; }
+#visual-number { display: inline-block; white-space: pre-wrap; }
+#visual-card { min-height: 1.65em; }
+.visual.has-content-image { display: flex; flex-direction: column; }
+.visual.has-content-image .visual-kicker { flex: 0 0 auto; }
+.visual.has-content-image h2 { flex: 0 0 auto; margin: 4% 0 3%; }
+.visual.has-content-image .visual-content { display: flex; flex: 1; flex-direction: column; gap: 10px; min-height: 0; }
+.visual.has-content-image pre { flex: 0 0 auto; max-height: 40%; overflow: auto; }
+#visual-content-image { width: 100%; flex: 1; object-fit: contain; min-height: 0; }
+#capture-review { width: min(880px, 94vw); max-height: 92vh; padding: 24px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--foreground); box-shadow: 0 20px 60px #0005; }
+#capture-review::backdrop { background: #0009; }
+.capture-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+#capture-review p { font-size: 12px; color: var(--muted); }
+#capture-preview { display: block; width: 100%; max-height: 55vh; object-fit: contain; background: var(--subtle); border: 1px solid var(--border); border-radius: 5px; }
+.capture-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .visual-controls { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 12px 0 20px; color: var(--muted); }
 .visual-controls > span { margin-right: auto; font-size: 10px; }
 .visual-controls button, .upload-button { font-size: 10px; padding: 7px 9px; }

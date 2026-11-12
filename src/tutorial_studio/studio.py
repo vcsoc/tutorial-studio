@@ -59,9 +59,10 @@ class Studio:
             data = copy.deepcopy(data)
             (self.workspace / "assets").mkdir(exist_ok=True)
             for scene in data["scenes"]:
-                if "image" in scene:
-                    original = asset_path(source, scene["image"])
-                    scene["image"] = self.image(base64.b64encode(original.read_bytes()).decode())["image"]
+                for key in ("image", "content_image"):
+                    if key in scene:
+                        original = asset_path(source, scene[key])
+                        scene[key] = self.image(base64.b64encode(original.read_bytes()).decode())["image"]
             self.draft = data
             self.save(data, 0)
 

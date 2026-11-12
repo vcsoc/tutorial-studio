@@ -52,7 +52,7 @@ def font(size, mono=False):
     return ImageFont.load_default(size=size)
 
 
-def frame(scene, root, destination):
+def frame(scene, root, destination, number=1):
     if "image" in scene:
         with Image.open(asset_path(root, scene["image"])) as source:
             if source.width * source.height > 25_000_000:
@@ -61,7 +61,9 @@ def frame(scene, root, destination):
     else:
         image = Image.new("RGB", (1920, 1080), "#101c1b")
         draw = ImageDraw.Draw(image)
-        draw.text((90, 65), "TUTORIAL STUDIO / LOCAL WALKTHROUGH", font=font(23, True), fill="#e6bd76")
+        breadcrumb = scene.get("breadcrumb", f"SCENE {number:02}")
+        for index, line in enumerate(textwrap.wrap("TUTORIAL STUDIO / " + breadcrumb, 120)):
+            draw.text((90, 65 + index * 28), line, font=font(23, True), fill="#e6bd76")
         y = 130
         for line in textwrap.wrap(scene["title"], 55):
             draw.text((90, y), line, font=font(49), fill="#f3ead8")
@@ -69,10 +71,20 @@ def frame(scene, root, destination):
         y += 35
         for paragraph in scene["card"].splitlines():
             for line in textwrap.wrap(paragraph, 100, replace_whitespace=False) or [""]:
-                if y > 940:
-                    raise ValueError("Card text exceeds frame; split into more scenes")
+                if y > (580 if "content_image" in scene else 940):
+                    raise ValueError("Card text exceeds frame; shorten it or split into more scenes")
                 draw.text((100, y), line, font=font(27, True), fill="#d2eadb")
                 y += 38
+        if "content_image" in scene:
+            top = y + 20
+            height = 960 - top
+            if height < 220:
+                raise ValueError("Not enough room for the inline image; shorten the card or title")
+            with Image.open(asset_path(root, scene["content_image"])) as source:
+                if source.width * source.height > 25_000_000:
+                    raise ValueError("Image exceeds 25 megapixels")
+                inset = ImageOps.contain(source.convert("RGB"), (1720, height))
+                image.paste(inset, ((1920 - inset.width) // 2, top + (height - inset.height) // 2))
         if scene.get("note"):
             draw.text((90, 1010), scene["note"][:120], font=font(21), fill="#e6bd76")
     image.save(destination)
@@ -117,7 +129,7 @@ def render(manifest, output, models=None, voice=None, narrator=None):
     receipt_path = output / "receipt.json"
     try:
         for i, scene in enumerate(data["scenes"], 1):
-            frame(scene, root, visuals / f"{i:03}.png")
+            frame(scene, root, visuals / f"{i:03}.png", number=i)
         if narrator is None:
             narrator = Narrator(**({"models": models} if models else {}))
         subtitles, chapters = [], [";FFMETADATA1", "title=" + data["title"].replace("\n", " ").replace("=", "-").replace(";", ",").replace("#", "")]
@@ -158,6 +170,7 @@ def render(manifest, output, models=None, voice=None, narrator=None):
         # Keep the saved manifest self-contained and rerenderable.
         for i, scene in enumerate(data["scenes"], 1):
             scene.pop("card", None)
+            scene.pop("content_image", None)
             scene["image"] = f"visuals/{i:03}.png"
         (output / "manifest.json").write_text(json.dumps(data, indent=2) + "\n")
         return receipt

@@ -56,7 +56,7 @@ def load_manifest(path):
         raise ValueError("Manifest requires 1 to 100 scenes")
     total = 0
     for scene in scenes:
-        if not isinstance(scene, dict) or set(scene) - {"title", "narration", "image", "card", "note"}:
+        if not isinstance(scene, dict) or set(scene) - {"title", "narration", "image", "card", "note", "breadcrumb", "content_image"}:
             raise ValueError("Invalid scene fields")
         text(scene.get("title"), "scene title", 180)
         total += len(text(scene.get("narration"), "narration", 5000))
@@ -64,10 +64,16 @@ def load_manifest(path):
             raise ValueError("Each scene needs exactly one image or card")
         if "image" in scene:
             asset_path(path.parent, scene["image"])
-        else:
+        elif scene["card"] != "" or "content_image" not in scene:
             text(scene["card"], "card", 2000)
         if "note" in scene:
             text(scene["note"], "note", 400)
+        if "breadcrumb" in scene:
+            text(scene["breadcrumb"], "breadcrumb", 120)
+        if "content_image" in scene:
+            if "card" not in scene:
+                raise ValueError("An inline content image requires a text card")
+            asset_path(path.parent, scene["content_image"])
     if total > 50_000:
         raise ValueError("Total narration exceeds 50,000 characters")
     pronunciations = data.get("pronunciations", {})
