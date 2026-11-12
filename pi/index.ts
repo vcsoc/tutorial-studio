@@ -46,10 +46,15 @@ export default function tutorialStudio(pi: ExtensionAPI) {
   pi.registerTool({
     name: 'tutorial_studio',
     label: 'Tutorial Studio',
-    description: 'Local tutorial framework: doctor, voices, validate, init, neural voice preview, video render or approved loopback browser capture. Mutations require an interactive confirmation. No cloud TTS or implicit downloads. Output capped at 12 KB / 200 lines.',
+    description: 'Local tutorial framework: doctor, voices, validate, init, neural voice preview, video render or approved loopback browser capture. Mutations require an interactive confirmation. No cloud TTS or implicit downloads. Use-only in consumer projects: do not edit the Tutorial Studio framework or extension. Output capped at 12 KB / 200 lines.',
     promptSnippet: 'Create and validate reusable local narrated tutorial videos',
     promptGuidelines: [
       'Use tutorial_studio when the user requests a tutorial video or voice preview. Read the framework README before authoring a manifest.',
+      `When using tutorial_studio for another project, treat the Tutorial Studio installation at ${root} and its extension/loader registrations as read-only infrastructure. Do not edit, delete, move, patch, upgrade, commit or push its source, documentation, progress logs, tests, configuration, dependencies, model assets or extension files. A tutorial-production request is not permission to maintain the framework.`,
+      'Keep tutorial_studio manifests, screenshots, scripts, drafts, previews, render outputs, receipts and project-specific progress notes in the consuming project or a user-approved external workspace, never in the Tutorial Studio checkout. Normal cache writes performed by the framework itself are allowed; do not manually modify framework internals.',
+      'If tutorial_studio fails or lacks a feature, report the issue and ask for maintenance in the Tutorial Studio project instead of patching the installed framework or extension from a consumer session.',
+      `Only edit tutorial_studio itself when the user explicitly requests framework/extension maintenance while working directly in the Tutorial Studio project at ${root}. Merely reading its files or running commands from its installation directory does not grant maintenance permission.`,
+
       'tutorial_studio manifests are inert data: do not execute target project code just to explain it, and never publish or capture private data without authorization.',
       'Use tutorial_studio preview and obtain voice approval before a full narration render. Do not claim screenshots are a continuous screen recording.',
     ],

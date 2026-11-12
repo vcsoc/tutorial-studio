@@ -45,6 +45,18 @@ npm ci --ignore-scripts --legacy-peer-deps
 
 `setup-model` obtains the model and voice arrays from the named kokoro-onnx GitHub release and verifies pinned size/SHA-256. Rendering refuses missing/changed assets instead of downloading a substitute. Those pins were recorded at initial authorized acquisition; they are not an independent upstream signature. See `docs/PROVENANCE.md`.
 
+## Consumer Use Is Read-Only
+
+Agents using Tutorial Studio to build another project's tutorial may use its documented tools and CLI, but must treat the framework installation, extension and global loader/registrations as read-only infrastructure. A tutorial request does not authorize framework maintenance.
+
+- Do not edit, delete, move, patch or upgrade framework/extension source, documentation, progress logs, tests, configuration, dependencies or model assets. Do not commit or push changes to this repository from consumer sessions.
+- Keep tutorial manifests, screenshots, narration scripts, drafts, previews, render outputs, receipts and project-specific progress notes in the consuming project or an explicitly approved external workspace, not this checkout.
+- Normal runtime cache writes by the framework are expected; they are not permission for agents to modify framework internals.
+- If a feature is missing or a command fails, report the issue and request maintenance here rather than patching the installed tool from another project.
+- Exception: the owner may explicitly request framework/extension changes while working directly in the Tutorial Studio project. Merely reading framework files or running its CLI from the installation directory does not qualify.
+
+These are agent instructions, not an operating-system filesystem sandbox.
+
 ## Pi Usage
 
 ```text
@@ -67,7 +79,7 @@ The `tutorial_studio` model tool exposes the same actions. It requires interacti
 
 Reusable agent request:
 
-> Create a private tutorial for this project using Tutorial Studio. Read the framework README first. Inspect the real documented workflows, create a short storyboard, and write a scene manifest using verified commands and actual application screenshots. Never claim a command succeeded unless it ran. Do not execute project code, start services or capture sensitive data without approval. Make a neural voice preview and wait for my voice approval before rendering the full video. Produce MP4, captions, transcript and a validation receipt. Do not publish anything.
+> Create a private tutorial for this project using Tutorial Studio. Read the framework README first. Inspect the real documented workflows, create a short storyboard, and write a scene manifest using verified commands and actual application screenshots. Never claim a command succeeded unless it ran. Do not execute project code, start services or capture sensitive data without approval. Make a neural voice preview and wait for my voice approval before rendering the full video. Produce MP4, captions, transcript and a validation receipt. Do not publish anything. Use Tutorial Studio as read-only infrastructure: do not modify its framework, extension, loader, dependencies, documentation or progress logs. Keep all tutorial artifacts and project notes in this project's workspace or an approved external output directory. Report framework issues for maintenance in the Tutorial Studio project; do not fix them from this consumer session.
 
 ## Voice Preview First
 
