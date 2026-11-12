@@ -1,6 +1,3 @@
-import json
-from pathlib import Path
-
 import pytest
 
 from tutorial_studio.assets import DEFAULT_MODELS

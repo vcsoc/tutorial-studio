@@ -1,7 +1,6 @@
 """Unit/negative tests; these do not substitute for real neural/media acceptance."""
 
 import json
-from pathlib import Path
 import sys
 
 import pytest
